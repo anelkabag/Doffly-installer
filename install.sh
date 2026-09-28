@@ -159,9 +159,49 @@ EOF
   systemctl enable --now doffly-agent
 fi
 
-echo "Doffly Agent ${VERSION} installed at ${INSTALL_DIR}/doffly-agent."
+# ---------- Final output ----------
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  GREEN=$'\033[1;32m'; CYAN=$'\033[1;36m'; DIM=$'\033[2m'
+  BOLD=$'\033[1m'; RESET=$'\033[0m'
+else
+  GREEN=""; CYAN=""; DIM=""; BOLD=""; RESET=""
+fi
 
+if [[ "${LC_ALL:-${LANG:-}}" == *[Uu][Tt][Ff]-8* || "${LC_ALL:-${LANG:-}}" == *[Uu][Tt][Ff]8* ]]; then
+  CHECK="✔"; ARROW="➜"; RULE="────────────────────────────────────────────"
+else
+  CHECK="[OK]"; ARROW="->"; RULE="--------------------------------------------"
+fi
+
+printf '\n%s' "$CYAN"
+cat <<'LOGO'
+ ____    ___   _____  _____  _     __   __
+|  _ \  / _ \ |  ___||  ___|| |    \ \ / /
+| | | || | | || |_   | |_   | |     \ V /
+| |_| || |_| ||  _|  |  _|  | |___   | |
+|____/  \___/ |_|    |_|    |_____|  |_|
+LOGO
+printf '%s' "$RESET"
+
+printf '\n%s%s Doffly Agent was installed successfully%s\n' "$GREEN" "$CHECK" "$RESET"
+printf '%s%s%s\n' "$DIM" "$RULE" "$RESET"
+printf '  %sVersion   %s : %s\n' "$BOLD" "$RESET" "$VERSION"
+printf '  %sAgent ID  %s : %s\n' "$BOLD" "$RESET" "$DOFFLY_AGENT_ID"
+printf '  %sExecutable%s : %s/doffly-agent\n' "$BOLD" "$RESET" "$INSTALL_DIR"
 if [[ "$INSTALL_SERVICE" == "true" ]]; then
-  echo "Service status: systemctl status doffly-agent"
-  echo "The agent is connected as ${DOFFLY_AGENT_ID}; it uses outbound HTTPS only."
+  printf '  %sService   %s : running and enabled at startup\n' "$BOLD" "$RESET"
+else
+  printf '  %sService   %s : not installed (binary-only mode)\n' "$BOLD" "$RESET"
+fi
+printf '%s%s%s\n' "$DIM" "$RULE" "$RESET"
+
+printf '\n%s%s Next step%s\n' "$CYAN" "$ARROW" "$RESET"
+if [[ "$INSTALL_SERVICE" == "true" ]]; then
+  printf '  Open your Doffly dashboard and confirm that agent\n'
+  printf '  %s%s%s appears online (the first connection may take a few moments).\n' "$BOLD" "$DOFFLY_AGENT_ID" "$RESET"
+  printf '\n%s  Check the service :%s systemctl status doffly-agent\n' "$DIM" "$RESET"
+  printf '%s  View the logs       :%s journalctl -u doffly-agent -f\n\n' "$DIM" "$RESET"
+else
+  printf '  Start the binary to connect this agent, then check your\n'
+  printf '  Doffly dashboard to confirm that it appears online.\n\n'
 fi
