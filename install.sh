@@ -4,7 +4,7 @@ set -euo pipefail
 RELEASE_REPO="anelkabag/Doffly-installer"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 INSTALL_SERVICE="${INSTALL_SERVICE:-true}"
-DOFFLY_API_URL="${DOFFLY_API_URL:-https://doffly.onrender.com}"
+DOFFLY_API_URL="${DOFFLY_API_URL:-https://api.doffly.pro}"
 ENV_DIR="/etc/doffly"
 ENV_FILE="${ENV_DIR}/agent.env"
 
@@ -70,8 +70,9 @@ fi
 
 VERSION="${DOFFLY_VERSION:-${VERSION:-}}"
 if [[ -z "$VERSION" ]]; then
-  VERSION="$(curl -fsSL --retry 3 "https://api.github.com/repos/${RELEASE_REPO}/releases/latest" \
-    | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+  LATEST_RELEASE_URL="$(curl -fsSL --retry 3 --output /dev/null --write-out '%{url_effective}' \
+    "https://github.com/${RELEASE_REPO}/releases/latest")"
+  VERSION="${LATEST_RELEASE_URL##*/}"
 fi
 
 if [[ ! "$VERSION" =~ ^v[0-9][A-Za-z0-9._+-]*$ ]]; then

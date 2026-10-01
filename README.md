@@ -11,7 +11,7 @@ The Doffly source repository remains private. This repository contains the publi
 Run the following command on a supported Linux VPS. The installer will prompt you for the **agent ID** and **one-time token** generated from your Doffly dashboard. Token input is hidden.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anelkabag/Doffly-installer/main/install.sh | sudo bash
+curl -fsSL https://doffly.pro/install.sh | sudo bash
 ```
 
 Once installed, the Doffly Agent runs as a systemd service and securely sends server metrics to Doffly, allowing you to monitor your server from a single dashboard.
@@ -19,7 +19,7 @@ Once installed, the Doffly Agent runs as a systemd service and securely sends se
 By default, the agent connects to:
 
 ```text
-https://doffly.onrender.com
+https://api.doffly.pro
 ```
 
 ## Pin a release
@@ -27,7 +27,7 @@ https://doffly.onrender.com
 To install a specific Doffly Agent version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anelkabag/Doffly-installer/main/install.sh | sudo env DOFFLY_VERSION=v0.1.0 bash
+curl -fsSL https://doffly.pro/install.sh | sudo env DOFFLY_VERSION=v0.1.0 bash
 ```
 
 ## Supported systems
