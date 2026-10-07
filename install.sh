@@ -39,6 +39,7 @@ prompt_value() {
   local variable="$1"
   local label="$2"
   local secret="${3:-false}"
+  local input
 
   [[ -n "${!variable:-}" ]] && return
   if [[ ! -r /dev/tty ]]; then
@@ -48,11 +49,12 @@ prompt_value() {
 
   printf '%s' "$label" > /dev/tty
   if [[ "$secret" == "true" ]]; then
-    IFS= read -r -s "$variable" < /dev/tty
+    IFS= read -r -s input < /dev/tty
     printf '\n' > /dev/tty
   else
-    IFS= read -r "$variable" < /dev/tty
+    IFS= read -r input < /dev/tty
   fi
+  printf -v "$variable" '%s' "$input"
 }
 
 prompt_value DOFFLY_AGENT_ID "Doffly Agent ID: "
