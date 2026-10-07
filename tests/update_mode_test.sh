@@ -12,6 +12,10 @@ mkdir -p "$FAKE_BIN" "$INSTALL_DIR"
 cat > "$FAKE_BIN/curl" <<'CURL'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "$*" == *"releases/latest"* ]]; then
+  printf '%s\n' '{"tag_name":"v0.3.2"}'
+  exit 0
+fi
 output=""
 next_argument=false
 for argument in "$@"; do
@@ -29,14 +33,13 @@ cat > "$FAKE_BIN/minisign" <<'MINISIGN'
 exit 0
 MINISIGN
 chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/minisign"
-printf 'v0.2.0 old-agent-binary' > "$INSTALL_DIR/doffly-agent"
+printf 'v0.3.0 old-agent-binary' > "$INSTALL_DIR/doffly-agent"
 chmod +x "$INSTALL_DIR/doffly-agent"
 
 set +e
 output="$(PATH="$FAKE_BIN:$PATH" \
   INSTALL_DIR="$INSTALL_DIR" \
   INSTALL_SERVICE=false \
-  DOFFLY_VERSION=v0.3.0 \
   DOFFLY_AGENT_ID=existing-agent \
   DOFFLY_AGENT_TOKEN=existing-token \
   DOFFLY_API_URL=https://api.doffly.pro \
@@ -49,9 +52,9 @@ if [[ $status -ne 0 ]]; then
   exit "$status"
 fi
 
-if ! grep -Fq 'v0.2.0 → v0.3.0' <<<"$output"; then
+if ! grep -Fq 'v0.3.0 → v0.3.2' <<<"$output"; then
   printf '%s\n' "$output" >&2
-  echo 'Expected an explicit v0.2.0 to v0.3.0 update message.' >&2
+  echo 'Expected an automatic v0.3.0 to v0.3.2 update message.' >&2
   exit 1
 fi
 

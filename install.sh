@@ -2,7 +2,6 @@
 set -euo pipefail
 
 RELEASE_REPO="anelkabag/Doffly-installer"
-DEFAULT_VERSION="v0.3.0"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 INSTALL_SERVICE="${INSTALL_SERVICE:-true}"
 DOFFLY_API_URL="${DOFFLY_API_URL:-https://api.doffly.pro}"
@@ -81,9 +80,14 @@ if [[ ! "$DOFFLY_API_URL" =~ ^https?://[A-Za-z0-9._:/-]+$ ]]; then
   exit 1
 fi
 
-VERSION="${DOFFLY_VERSION:-${VERSION:-$DEFAULT_VERSION}}"
+VERSION="${DOFFLY_VERSION:-${VERSION:-}}"
+if [[ -z "$VERSION" ]]; then
+  VERSION="$(curl -fsSL --retry 3 "https://api.github.com/repos/${RELEASE_REPO}/releases/latest" \
+    | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+fi
+
 if [[ ! "$VERSION" =~ ^v[0-9][A-Za-z0-9._+-]*$ ]]; then
-  echo "Invalid release version. Set DOFFLY_VERSION to a pinned version such as v0.3.0." >&2
+  echo "Could not determine a valid release version. Set DOFFLY_VERSION (for example v0.3.2)." >&2
   exit 1
 fi
 
