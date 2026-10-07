@@ -93,9 +93,7 @@ fi
 
 CURRENT_VERSION="unknown"
 if [[ -x "${INSTALL_DIR}/doffly-agent" ]]; then
-  CURRENT_VERSION="$(strings "${INSTALL_DIR}/doffly-agent" \
-    | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' \
-    | sort -u | tail -n 1 || true)"
+  CURRENT_VERSION="$("${INSTALL_DIR}/doffly-agent" --version 2>/dev/null | head -n 1 || true)"
   CURRENT_VERSION="${CURRENT_VERSION:-unknown}"
   if [[ "$CURRENT_VERSION" != "unknown" && "$CURRENT_VERSION" != v* ]]; then
     CURRENT_VERSION="v${CURRENT_VERSION}"
