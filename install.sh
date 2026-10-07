@@ -93,11 +93,10 @@ fi
 
 CURRENT_VERSION="unknown"
 if [[ -x "${INSTALL_DIR}/doffly-agent" ]]; then
-  CURRENT_VERSION="$("${INSTALL_DIR}/doffly-agent" --version 2>/dev/null | head -n 1 || true)"
+  CURRENT_VERSION="$("${INSTALL_DIR}/doffly-agent" --version 2>/dev/null \
+    | sed -nE 's/.*Using Doffly version [vV]?([0-9]+\.[0-9]+\.[0-9]+).*/v\1/p' \
+    | head -n 1 || true)"
   CURRENT_VERSION="${CURRENT_VERSION:-unknown}"
-  if [[ "$CURRENT_VERSION" != "unknown" && "$CURRENT_VERSION" != v* ]]; then
-    CURRENT_VERSION="v${CURRENT_VERSION}"
-  fi
 fi
 ASSET="doffly-agent-linux-${ARCH}"
 RELEASE_URL="https://github.com/${RELEASE_REPO}/releases/download/${VERSION}"

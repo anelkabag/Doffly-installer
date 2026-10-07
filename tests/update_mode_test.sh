@@ -36,7 +36,7 @@ chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/minisign"
 cat > "$INSTALL_DIR/doffly-agent" <<'AGENT'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "--version" ]]; then
-  printf '0.3.0\n'
+  printf 'Using Doffly version 0.3.0\n'
   exit 0
 fi
 printf 'Doffly agent v0.3.0\n9.4.0 dependency-version\nold-agent-binary\n'
