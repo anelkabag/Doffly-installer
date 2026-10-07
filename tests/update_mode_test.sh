@@ -13,7 +13,7 @@ cat > "$FAKE_BIN/curl" <<'CURL'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "$*" == *"releases/latest"* ]]; then
-  printf '%s\n' '{"tag_name":"v0.3.2"}'
+  printf '%s\n' '{"tag_name":"v0.3.3"}'
   exit 0
 fi
 output=""
@@ -59,9 +59,9 @@ if [[ $status -ne 0 ]]; then
   exit "$status"
 fi
 
-if ! grep -Fq 'v0.3.0 → v0.3.2' <<<"$output"; then
+if ! grep -Fq 'v0.3.0 → v0.3.3' <<<"$output"; then
   printf '%s\n' "$output" >&2
-  echo 'Expected an automatic v0.3.0 to v0.3.2 update message.' >&2
+  echo 'Expected an automatic v0.3.0 to v0.3.3 update message.' >&2
   exit 1
 fi
 
