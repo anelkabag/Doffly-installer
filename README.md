@@ -32,6 +32,18 @@ To install a specific Doffly Agent version:
 curl -fsSL https://doffly.pro/install.sh | sudo env DOFFLY_VERSION=v0.3.0 bash
 ```
 
+## Update an existing agent
+
+To update an existing agent from v0.2.0 to v0.3.0 with one command:
+
+```bash
+curl -fsSL https://doffly.pro/install.sh | sudo env DOFFLY_VERSION=v0.3.0 bash -s -- --update
+```
+
+The update mode reuses the existing service configuration, verifies the
+release signature, restarts the agent, and prints the previous and new
+versions clearly, for example `v0.2.0 → v0.3.0`.
+
 ## Supported systems
 
 Doffly currently supports:

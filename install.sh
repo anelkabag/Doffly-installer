@@ -35,11 +35,17 @@ if [[ "$INSTALL_SERVICE" == "true" ]] && ! command -v systemctl >/dev/null 2>&1;
   exit 1
 fi
 
-prompt_value() {
-  local variable="$1"
-  local label="$2"
-  local secret="${3:-false}"
-  local input
+UPDATE_MODE="false"
+if [[ "${1:-}" == "--update" || "${DOFFLY_UPDATE:-false}" == "true" ]]; then
+  UPDATE_MODE="true"
+fi
+
+if [[ "$UPDATE_MODE" == "false" ]]; then
+  prompt_value() {
+    local variable="$1"
+    local label="$2"
+    local secret="${3:-false}"
+    local input
 
   [[ -n "${!variable:-}" ]] && return
   if [[ ! -r /dev/tty ]]; then
@@ -57,17 +63,19 @@ prompt_value() {
   printf -v "$variable" '%s' "$input"
 }
 
-prompt_value DOFFLY_AGENT_ID "Doffly Agent ID: "
-prompt_value DOFFLY_AGENT_TOKEN "Doffly Agent token: " true
+  prompt_value DOFFLY_AGENT_ID "Doffly Agent ID: "
+  prompt_value DOFFLY_AGENT_TOKEN "Doffly Agent token: " true
 
-if [[ ! "$DOFFLY_AGENT_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
-  echo "Invalid DOFFLY_AGENT_ID." >&2
-  exit 1
+  if [[ ! "$DOFFLY_AGENT_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+    echo "Invalid DOFFLY_AGENT_ID." >&2
+    exit 1
+  fi
+  if [[ ! "$DOFFLY_AGENT_TOKEN" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
+    echo "Invalid DOFFLY_AGENT_TOKEN." >&2
+    exit 1
+  fi
 fi
-if [[ ! "$DOFFLY_AGENT_TOKEN" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
-  echo "Invalid DOFFLY_AGENT_TOKEN." >&2
-  exit 1
-fi
+
 if [[ ! "$DOFFLY_API_URL" =~ ^https?://[A-Za-z0-9._:/-]+$ ]]; then
   echo "Invalid DOFFLY_API_URL." >&2
   exit 1
@@ -79,6 +87,16 @@ if [[ ! "$VERSION" =~ ^v[0-9][A-Za-z0-9._+-]*$ ]]; then
   exit 1
 fi
 
+CURRENT_VERSION="unknown"
+if [[ -x "${INSTALL_DIR}/doffly-agent" ]]; then
+  CURRENT_VERSION="$(strings "${INSTALL_DIR}/doffly-agent" \
+    | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' \
+    | sort -u | tail -n 1 || true)"
+  CURRENT_VERSION="${CURRENT_VERSION:-unknown}"
+  if [[ "$CURRENT_VERSION" != "unknown" && "$CURRENT_VERSION" != v* ]]; then
+    CURRENT_VERSION="v${CURRENT_VERSION}"
+  fi
+fi
 ASSET="doffly-agent-linux-${ARCH}"
 RELEASE_URL="https://github.com/${RELEASE_REPO}/releases/download/${VERSION}"
 
@@ -104,29 +122,33 @@ install -d "$INSTALL_DIR"
 install -m 0755 "$TMP_DIR/$ASSET" "${INSTALL_DIR}/doffly-agent"
 
 if [[ "$INSTALL_SERVICE" == "true" ]]; then
-  if ! getent group doffly >/dev/null; then
-    groupadd --system doffly
-  fi
-  if ! id doffly >/dev/null 2>&1; then
-    useradd --system --gid doffly --home-dir /var/lib/doffly \
-      --create-home --shell /usr/sbin/nologin doffly
-  fi
-
-  if [[ -f /etc/systemd/system/doffly.service ]]; then
-    systemctl disable --now doffly
-    rm -f /etc/systemd/system/doffly.service
+  if [[ "$UPDATE_MODE" == "true" ]]; then
     systemctl daemon-reload
-  fi
+    systemctl restart doffly-agent
+  else
+    if ! getent group doffly >/dev/null; then
+      groupadd --system doffly
+    fi
+    if ! id doffly >/dev/null 2>&1; then
+      useradd --system --gid doffly --home-dir /var/lib/doffly \
+        --create-home --shell /usr/sbin/nologin doffly
+    fi
 
-  install -d -o root -g root -m 0700 "$ENV_DIR"
-  env_tmp="$(mktemp "${ENV_DIR}/agent.env.XXXXXX")"
-  printf 'DOFFLY_API_URL=%s\nDOFFLY_AGENT_ID=%s\nDOFFLY_AGENT_TOKEN=%s\nDOFFLY_AGENT_ADDR=127.0.0.1:9090\n' \
-    "$DOFFLY_API_URL" "$DOFFLY_AGENT_ID" "$DOFFLY_AGENT_TOKEN" > "$env_tmp"
-  chown root:root "$env_tmp"
-  chmod 0600 "$env_tmp"
-  mv "$env_tmp" "$ENV_FILE"
+    if [[ -f /etc/systemd/system/doffly.service ]]; then
+      systemctl disable --now doffly
+      rm -f /etc/systemd/system/doffly.service
+      systemctl daemon-reload
+    fi
 
-  cat > /etc/systemd/system/doffly-agent.service <<EOF
+    install -d -o root -g root -m 0700 "$ENV_DIR"
+    env_tmp="$(mktemp "${ENV_DIR}/agent.env.XXXXXX")"
+    printf 'DOFFLY_API_URL=%s\nDOFFLY_AGENT_ID=%s\nDOFFLY_AGENT_TOKEN=%s\nDOFFLY_AGENT_ADDR=127.0.0.1:9090\n' \
+      "$DOFFLY_API_URL" "$DOFFLY_AGENT_ID" "$DOFFLY_AGENT_TOKEN" > "$env_tmp"
+    chown root:root "$env_tmp"
+    chmod 0600 "$env_tmp"
+    mv "$env_tmp" "$ENV_FILE"
+
+    cat > /etc/systemd/system/doffly-agent.service <<EOF
 [Unit]
 Description=Doffly monitoring agent
 After=network-online.target
@@ -156,8 +178,9 @@ SystemCallArchitectures=native
 WantedBy=multi-user.target
 EOF
 
-  systemctl daemon-reload
-  systemctl enable --now doffly-agent
+    systemctl daemon-reload
+    systemctl enable --now doffly-agent
+  fi
 fi
 
 # ---------- Final output ----------
@@ -184,20 +207,41 @@ cat <<'LOGO'
 LOGO
 printf '%s' "$RESET"
 
-printf '\n%s%s Doffly Agent was installed successfully%s\n' "$GREEN" "$CHECK" "$RESET"
-printf '%s%s%s\n' "$DIM" "$RULE" "$RESET"
-printf '  %sVersion   %s : %s\n' "$BOLD" "$RESET" "$VERSION"
-printf '  %sAgent ID  %s : %s\n' "$BOLD" "$RESET" "$DOFFLY_AGENT_ID"
-printf '  %sExecutable%s : %s/doffly-agent\n' "$BOLD" "$RESET" "$INSTALL_DIR"
-if [[ "$INSTALL_SERVICE" == "true" ]]; then
-  printf '  %sService   %s : running and enabled at startup\n' "$BOLD" "$RESET"
+if [[ "$UPDATE_MODE" == "true" ]]; then
+  printf '\n%s%s Doffly Agent update completed successfully%s\n' "$GREEN" "$CHECK" "$RESET"
+  printf '%s%s%s\n' "$DIM" "$RULE" "$RESET"
+  printf '  %sPrevious version%s : %s\n' "$BOLD" "$RESET" "$CURRENT_VERSION"
+  printf '  %sNew version     %s : %s\n' "$BOLD" "$RESET" "$VERSION"
+  printf '  %sTransition      %s : %s → %s\n' "$BOLD" "$RESET" "$CURRENT_VERSION" "$VERSION"
+  printf '  %sExecutable     %s : %s/doffly-agent\n' "$BOLD" "$RESET" "$INSTALL_DIR"
+  if [[ "$INSTALL_SERVICE" == "true" ]]; then
+    printf '  %sService         %s : restarted and enabled at startup\n' "$BOLD" "$RESET"
+  else
+    printf '  %sService         %s : binary-only mode, service not managed\n' "$BOLD" "$RESET"
+  fi
 else
-  printf '  %sService   %s : not installed (binary-only mode)\n' "$BOLD" "$RESET"
+  printf '\n%s%s Doffly Agent was installed successfully%s\n' "$GREEN" "$CHECK" "$RESET"
+  printf '%s%s%s\n' "$DIM" "$RULE" "$RESET"
+  printf '  %sVersion   %s : %s\n' "$BOLD" "$RESET" "$VERSION"
+  printf '  %sAgent ID  %s : %s\n' "$BOLD" "$RESET" "$DOFFLY_AGENT_ID"
+  printf '  %sExecutable%s : %s/doffly-agent\n' "$BOLD" "$RESET" "$INSTALL_DIR"
+  if [[ "$INSTALL_SERVICE" == "true" ]]; then
+    printf '  %sService   %s : running and enabled at startup\n' "$BOLD" "$RESET"
+  else
+    printf '  %sService   %s : not installed (binary-only mode)\n' "$BOLD" "$RESET"
+  fi
 fi
 printf '%s%s%s\n' "$DIM" "$RULE" "$RESET"
 
 printf '\n%s%s Next step%s\n' "$CYAN" "$ARROW" "$RESET"
-if [[ "$INSTALL_SERVICE" == "true" ]]; then
+if [[ "$UPDATE_MODE" == "true" ]]; then
+  printf '  The agent has been updated from %s to %s.\n' "$CURRENT_VERSION" "$VERSION"
+  printf '  Confirm that the agent appears online in your Doffly dashboard.\n'
+  if [[ "$INSTALL_SERVICE" == "true" ]]; then
+    printf '\n%s  Check the service :%s systemctl status doffly-agent\n' "$DIM" "$RESET"
+    printf '%s  View the logs       :%s journalctl -u doffly-agent -f\n\n' "$DIM" "$RESET"
+  fi
+elif [[ "$INSTALL_SERVICE" == "true" ]]; then
   printf '  Open your Doffly dashboard and confirm that agent\n'
   printf '  %s%s%s appears online (the first connection may take a few moments).\n' "$BOLD" "$DOFFLY_AGENT_ID" "$RESET"
   printf '\n%s  Check the service :%s systemctl status doffly-agent\n' "$DIM" "$RESET"
