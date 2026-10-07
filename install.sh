@@ -87,7 +87,7 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 if [[ ! "$VERSION" =~ ^v[0-9][A-Za-z0-9._+-]*$ ]]; then
-  echo "Could not determine a valid release version. Set DOFFLY_VERSION (for example v0.3.2)." >&2
+  echo "Could not determine a valid release version. Set DOFFLY_VERSION (for example v0.3.3)." >&2
   exit 1
 fi
 
