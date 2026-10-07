@@ -33,7 +33,7 @@ cat > "$FAKE_BIN/minisign" <<'MINISIGN'
 exit 0
 MINISIGN
 chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/minisign"
-printf 'v0.3.0 old-agent-binary' > "$INSTALL_DIR/doffly-agent"
+printf 'Doffly agent v0.3.0\n9.4.0 dependency-version\nold-agent-binary' > "$INSTALL_DIR/doffly-agent"
 chmod +x "$INSTALL_DIR/doffly-agent"
 
 set +e
