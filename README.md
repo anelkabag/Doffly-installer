@@ -14,6 +14,8 @@ Run the following command on a supported Linux VPS. The installer will prompt yo
 curl -fsSL https://doffly.pro/install.sh | sudo bash
 ```
 
+The installer defaults to Doffly Agent v0.3.0 and verifies the downloaded binary with a pinned minisign public key before installation. The `minisign` executable must be installed on the VPS.
+
 Once installed, the Doffly Agent runs as a systemd service and securely sends server metrics to Doffly, allowing you to monitor your server from a single dashboard.
 
 By default, the agent connects to:
@@ -27,7 +29,7 @@ https://api.doffly.pro
 To install a specific Doffly Agent version:
 
 ```bash
-curl -fsSL https://doffly.pro/install.sh | sudo env DOFFLY_VERSION=v0.1.0 bash
+curl -fsSL https://doffly.pro/install.sh | sudo env DOFFLY_VERSION=v0.3.0 bash
 ```
 
 ## Supported systems
@@ -37,7 +39,7 @@ Doffly currently supports:
 * Linux `x86_64` / `amd64`
 * Linux `aarch64` / `arm64`
 
-The installer automatically downloads the matching public GitHub Release asset and verifies it against `checksums.txt`.
+The installer automatically downloads the matching public GitHub Release asset, signature, and release metadata. It verifies the minisign signature against the pinned public key before installation.
 
 The agent is installed at:
 

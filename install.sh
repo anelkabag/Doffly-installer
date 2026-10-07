@@ -2,11 +2,14 @@
 set -euo pipefail
 
 RELEASE_REPO="anelkabag/Doffly-installer"
+DEFAULT_VERSION="v0.3.0"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 INSTALL_SERVICE="${INSTALL_SERVICE:-true}"
 DOFFLY_API_URL="${DOFFLY_API_URL:-https://api.doffly.pro}"
 ENV_DIR="/etc/doffly"
 ENV_FILE="${ENV_DIR}/agent.env"
+MINISIGN_PUBLIC_KEY='untrusted comment: minisign public key 83010FCD2D3335CD
+RWTNNTMtzQ8Bg1r07J1yOtnV88TPGyTtVSn0+cYfjN996RJQ4YPwl2uh'
 
 if [[ "$(uname -s)" != "Linux" ]]; then
   echo "Doffly Agent currently supports Linux only." >&2
@@ -68,15 +71,9 @@ if [[ ! "$DOFFLY_API_URL" =~ ^https?://[A-Za-z0-9._:/-]+$ ]]; then
   exit 1
 fi
 
-VERSION="${DOFFLY_VERSION:-${VERSION:-}}"
-if [[ -z "$VERSION" ]]; then
-  LATEST_RELEASE_URL="$(curl -fsSL --retry 3 --output /dev/null --write-out '%{url_effective}' \
-    "https://github.com/${RELEASE_REPO}/releases/latest")"
-  VERSION="${LATEST_RELEASE_URL##*/}"
-fi
-
+VERSION="${DOFFLY_VERSION:-${VERSION:-$DEFAULT_VERSION}}"
 if [[ ! "$VERSION" =~ ^v[0-9][A-Za-z0-9._+-]*$ ]]; then
-  echo "Could not determine a valid release version. Set DOFFLY_VERSION (for example v0.1.0)." >&2
+  echo "Invalid release version. Set DOFFLY_VERSION to a pinned version such as v0.3.0." >&2
   exit 1
 fi
 
@@ -86,19 +83,20 @@ RELEASE_URL="https://github.com/${RELEASE_REPO}/releases/download/${VERSION}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-echo "Downloading Doffly Agent ${VERSION} (linux/${ARCH})..."
-curl -fsSL --retry 3 "${RELEASE_URL}/${ASSET}" -o "$TMP_DIR/$ASSET"
-curl -fsSL --retry 3 "${RELEASE_URL}/checksums.txt" -o "$TMP_DIR/checksums.txt"
-
-CHECKSUM="$(awk -v asset="$ASSET" '$2 == asset { print $1; exit }' "$TMP_DIR/checksums.txt")"
-if [[ ! "$CHECKSUM" =~ ^[A-Fa-f0-9]{64}$ ]]; then
-  echo "No valid SHA-256 checksum found for ${ASSET}." >&2
+if ! command -v minisign >/dev/null 2>&1; then
+  echo "minisign is required to verify the Doffly Agent release." >&2
   exit 1
 fi
-printf '%s  %s\n' "$CHECKSUM" "$TMP_DIR/$ASSET" | sha256sum --check --status - || {
-  echo "SHA-256 verification failed; the agent was not installed." >&2
+
+printf '%s\n' "$MINISIGN_PUBLIC_KEY" > "$TMP_DIR/minisign.pub"
+echo "Downloading Doffly Agent ${VERSION} (linux/${ARCH})..."
+curl -fsSL --retry 3 "${RELEASE_URL}/${ASSET}" -o "$TMP_DIR/$ASSET"
+curl -fsSL --retry 3 "${RELEASE_URL}/${ASSET}.minisig" -o "$TMP_DIR/$ASSET.minisig"
+
+if ! minisign -V -p "$TMP_DIR/minisign.pub" -m "$TMP_DIR/$ASSET" -x "$TMP_DIR/$ASSET.minisig" -q; then
+  echo "Signature verification failed; the agent was not installed." >&2
   exit 1
-}
+fi
 
 install -d "$INSTALL_DIR"
 install -m 0755 "$TMP_DIR/$ASSET" "${INSTALL_DIR}/doffly-agent"
